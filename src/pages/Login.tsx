@@ -6,15 +6,6 @@ import { Input } from '@/components/ui/input';
 import { useAuth } from '../auth.tsx';
 import { ErrorBox, useAction } from '../ui.tsx';
 
-const DEMO_PASSWORD = 'Password123!';
-const DEMO_ACCOUNTS = [
-  ['Super Admin', 'admin@demo.id'],
-  ['HR', 'hr@demo.id'],
-  ['Eng. Manager', 'em@demo.id'],
-  ['Tech Lead', 'tl1@demo.id'],
-  ['Employee', 'emp1@demo.id']
-];
-
 const FEATURES: [any, string, string][] = [
   [Users, 'Evaluasi multi-sumber', 'Tech Lead, PM, klien, self-assessment, dan metrik objektif.'],
   [BarChart3, 'Skor terbobot & adil', 'Rubrik per seniority dengan ambang klasifikasi terukur.'],
@@ -128,7 +119,7 @@ export default function Login() {
                 <span className='text-[13px] font-semibold'>Email</span>
                 <div className='relative'>
                   <Mail className='pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground' />
-                  <Input className='h-11 pl-9' type='email' value={email} onChange={(e) => setEmail(e.target.value)} autoComplete='username' required autoFocus placeholder='nama@demo.id' />
+                  <Input className='h-11 pl-9' type='email' value={email} onChange={(e) => setEmail(e.target.value)} autoComplete='username' required autoFocus placeholder='nama@perusahaan.com' />
                 </div>
               </label>
 
@@ -162,32 +153,6 @@ export default function Login() {
                 )}
               </Button>
             </form>
-
-            <div className='mt-6 border-t pt-5'>
-              <div className='mb-2.5 flex items-center gap-2 text-xs font-semibold text-muted-foreground'>
-                <span className='h-px flex-1 bg-border' />
-                Akun demo — klik untuk mengisi
-                <span className='h-px flex-1 bg-border' />
-              </div>
-              <div className='flex flex-wrap justify-center gap-2'>
-                {DEMO_ACCOUNTS.map(([label, mail]) => (
-                  <Button
-                    key={mail}
-                    type='button'
-                    variant='outline'
-                    size='sm'
-                    title={mail}
-                    className='h-8 rounded-full px-3.5 text-xs'
-                    onClick={() => {
-                      setEmail(mail);
-                      setPassword(DEMO_PASSWORD);
-                    }}
-                  >
-                    {label}
-                  </Button>
-                ))}
-              </div>
-            </div>
           </div>
 
           <p className='mt-6 text-center text-xs text-muted-foreground'>Klasifikasi performa adalah masukan untuk keputusan manajerial, bukan keputusan otomatis.</p>
