@@ -632,6 +632,7 @@ export function PeriodDetail() {
   return (
     <Page eyebrow="Periode evaluasi" title={p?.name ?? 'Periode'} actions={hr && p && (
       <>
+        {p.status === 'draft' && <Button asChild variant="outline"><Link to={`/periods/new?draft=${p.id}`}>Lanjutkan di wizard</Link></Button>}
         {p.status === 'draft' && <Button variant="outline" onClick={() => setScope(p.evaluations.map((e) => e.employee_id))}>Ubah cakupan</Button>}
         {p.status !== 'closed' && <Button variant="outline" onClick={() => { setError(null); setDl({ deadline: p.deadline, reason: '' }); }}>{p.status === 'draft' ? 'Ubah tanggal' : 'Ubah tenggat'}</Button>}
         {p.status === 'draft' && <Button disabled={busy} onClick={act('activate', { title: 'Mulai periode?', tone: 'info', confirmText: 'Mulai periode', description: 'Konfigurasi indikator, bobot, dan ambang saat ini akan dibekukan sebagai snapshot untuk periode ini. Evaluator akan menerima notifikasi penugasan.' })}>Mulai periode</Button>}

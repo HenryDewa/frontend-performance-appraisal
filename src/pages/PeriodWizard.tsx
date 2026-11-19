@@ -2,9 +2,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Department } from '../types.ts';
 import { DatePicker } from '@/components/ui/date-picker';
 import { useConfirm } from '@/components/ConfirmProvider';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
-import { ArrowLeft, ArrowRight, Check } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Save } from 'lucide-react';
 import { api } from '../api.ts';
 import { useAuth, isHR } from '../auth.tsx';
 import { cn } from '@/lib/utils';
@@ -35,6 +35,12 @@ function defaultInfo() {
   const end = iso(new Date(Date.UTC(y, q * 3 + 3, 0)));
   return { name: `Evaluasi Q${q + 1} ${y}`, department: '', start_date: start, end_date: end, deadline: addDays(end, 14) };
 }
+/** Ringkasan isi wizard; dibandingkan dengan yang terakhir disimpan untuk mengetahui ada perubahan yang belum tersimpan. */
+function sigOf(info: any, selected: number[], rows: any[] | null) {
+  return JSON.stringify([info, [...selected].sort((a, b) => a - b), rows ? rows.map((r) => [r.employee.id, r.proposals.map((p) => [p.source, p.evaluator_user_id, p.project_id ?? null])]) : null]);
+}
+const buildAssignments = (rows: any[]) => rows.flatMap((r) => r.proposals.map((p) => ({ employee_id: r.employee.id, source: p.source, evaluator_user_id: p.evaluator_user_id, ...(p.project_id ? { project_id: p.project_id } : {}) })));
+
 function infoErrors(f) {
   const e: Record<string, string> = {};
   if (!f.name.trim()) e.name = 'Nama periode wajib diisi';
@@ -205,6 +211,13 @@ export default function PeriodWizard() {
   const confirm = useConfirm();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [params, setParams] = useSearchParams();
+  const draftParam = params.get('draft');
+  const [draftId, setDraftId] = useState<number | null>(null);
+  const [savedSig, setSavedSig] = useState<string | null>(null);
+  const [resuming, setResuming] = useState<{ loading: boolean; error: any }>({ loading: !!draftParam, error: null });
+  const loadedDraft = useRef<string | null>(null);
+  const resumeAssignments = useRef<any[] | null>(null);
   const [step, setStep] = useState(0);
   const [maxStep, setMaxStep] = useState(0);
   const [touched, setTouched] = useState(false);
@@ -229,7 +242,9 @@ export default function PeriodWizard() {
   const ownCfg = useMemo(() => new Set(depts.filter((d) => d.own_config).map((d) => d.name)), [depts]);
   const scopeEmployees = useMemo(() => employees.filter((e) => (info.department ? e.department === info.department : !ownCfg.has(e.department))), [employees, info.department, ownCfg]);
   useEffect(() => { setSelected((sel) => { const ok = sel.filter((id) => scopeEmployees.some((e) => e.id === id)); return ok.length === sel.length ? sel : ok; }); }, [scopeEmployees]);
-  const dirty = !done && (selected.length > 0 || JSON.stringify(info) !== JSON.stringify(initial.current));
+  const initialSig = useRef(sigOf(initial.current, [], null));
+  const signature = useMemo(() => sigOf(info, selected, plan?.rows ?? null), [info, selected, plan]);
+  const dirty = !done && signature !== (savedSig ?? initialSig.current);
 
   // data pendukung
   useEffect(() => {
@@ -251,6 +266,27 @@ export default function PeriodWizard() {
     return () => { off = true; };
   }, []);
 
+  // lanjutkan draft: muat info, cakupan, dan penilai yang tersimpan
+  useEffect(() => {
+    if (!draftParam || loadedDraft.current === draftParam || empState.loading) return;
+    loadedDraft.current = draftParam;
+    let off = false;
+    api.get(`/periods/${draftParam}/wizard`).then((r) => {
+      if (off) return;
+      const next = { name: r.period.name, department: r.period.department ?? '', start_date: r.period.start_date, end_date: r.period.end_date, deadline: r.period.deadline };
+      setInfo(next);
+      setSelected(r.employee_ids);
+      setDraftId(r.period.id);
+      resumeAssignments.current = r.assignments.length ? r.assignments : null;
+      setSavedSig(sigOf(next, r.employee_ids, null));
+      const to = r.employee_ids.length ? 2 : 1;
+      setMaxStep(to);
+      setStep(to);
+      setResuming({ loading: false, error: null });
+    }).catch((error) => !off && setResuming({ loading: false, error }));
+    return () => { off = true; };
+  }, [draftParam, empState.loading]);
+
   // peringatan saat menutup/reload tab dengan input belum disimpan
   useEffect(() => {
     if (!dirty) return undefined;
@@ -265,7 +301,19 @@ export default function PeriodWizard() {
     setPlanState({ loading: true, error: null });
     try {
       const r = await api.post('/periods/suggest-evaluators', { employee_ids: selected, start_date: info.start_date, end_date: info.end_date, department: info.department || null });
-      const rows = r.employees.map((e) => ({ ...e, proposals: e.proposals.map((p) => ({ ...p, key: `s${++keyN.current}` })) }));
+      let rows = r.employees.map((e) => ({ ...e, proposals: e.proposals.map((p) => ({ ...p, key: `s${++keyN.current}` })) }));
+      const saved = resumeAssignments.current;
+      if (saved) {
+        // melanjutkan draft: pakai penilai yang tersimpan, bukan usulan baru (usulan baru hanya lewat "Hitung ulang usulan")
+        resumeAssignments.current = null;
+        rows = rows.map((row) => ({
+          ...row,
+          proposals: saved.filter((a) => a.employee_id === row.employee.id).map((a) => ({
+            source: a.source, evaluator_user_id: a.evaluator_user_id, evaluator_name: a.evaluator_name, project_id: a.project_id, project_name: a.project_name, alternatives: [], key: `s${++keyN.current}`,
+          })),
+        }));
+        setSavedSig(sigOf(info, selected, rows));
+      }
       setPlan({ key: planKey, config: r.config, rows });
       setPlanState({ loading: false, error: null });
     } catch (error) {
@@ -304,16 +352,37 @@ export default function PeriodWizard() {
     navigate('/periods');
   };
 
+  const saveDraft = () => run(async () => {
+    setTouched(true);
+    if (Object.keys(errors).length) { setStep(0); return; }
+    const body = {
+      name: info.name.trim(), department: info.department || null, start_date: info.start_date, end_date: info.end_date, deadline: info.deadline, employee_ids: selected,
+      // penilai ikut disimpan hanya bila usulannya sudah dihitung untuk cakupan dan tanggal saat ini; selain itu yang tersimpan dibiarkan
+      ...(plan && plan.key === planKey ? { assignments: buildAssignments(plan.rows) } : {}),
+    };
+    const res = draftId ? await api.put(`/periods/${draftId}/wizard`, body) : await api.post('/periods/wizard/draft', body);
+    setDraftId(res.id);
+    setSavedSig(signature);
+    if (draftParam !== String(res.id)) {
+      loadedDraft.current = String(res.id); // jangan memuat ulang dari server saat alamat berubah
+      setParams({ draft: String(res.id) }, { replace: true });
+    }
+    toast.success('Draft disimpan', { description: 'Anda dapat melanjutkannya nanti dari detail periode (Lanjutkan di wizard).' });
+  });
+
   const submit = () => run(async () => {
-    const assignments = plan.rows.flatMap((r) => r.proposals.map((p) => ({ employee_id: r.employee.id, source: p.source, evaluator_user_id: p.evaluator_user_id, ...(p.project_id ? { project_id: p.project_id } : {}) })));
-    const res = await api.post('/periods/wizard', { name: info.name.trim(), department: info.department || null, start_date: info.start_date, end_date: info.end_date, deadline: info.deadline, employee_ids: selected, assignments, activate: activate && canActivate });
+    const assignments = buildAssignments(plan.rows);
+    const body = { name: info.name.trim(), department: info.department || null, start_date: info.start_date, end_date: info.end_date, deadline: info.deadline, employee_ids: selected, assignments, activate: activate && canActivate };
+    const res = draftId ? await api.put(`/periods/${draftId}/wizard`, body) : await api.post('/periods/wizard', body);
     setDone(true);
     toast.success(res.activated ? `Periode "${info.name}" dibuat dan dimulai` : `Periode "${info.name}" dibuat sebagai draft`, { description: `${res.assigned} penugasan evaluator tersimpan.` });
     navigate(`/periods/${res.id}`);
   });
 
   return (
-    <Page title="Buat periode evaluasi" eyebrow="Wizard periode" actions={<Button variant="outline" onClick={cancel}>Batal</Button>}>
+    <Page title={draftId ? 'Lanjutkan draft periode' : 'Buat periode evaluasi'} eyebrow="Wizard periode" actions={<Button variant="outline" onClick={cancel}>Batal</Button>}>
+      {resuming.loading && <p className="text-sm text-muted-foreground" role="status">Memuat draft…</p>}
+      {resuming.error && <ErrorBox error={resuming.error} />}
       <Stepper step={step} maxStep={maxStep} onGo={go} />
       <div className="min-h-64">
         {step === 0 && <StepInfo info={info} setInfo={setInfo} errors={errors} touched={touched} depts={depts} />}
@@ -322,6 +391,7 @@ export default function PeriodWizard() {
           <StepEvaluators
             plan={plan?.key === planKey ? plan : null} loading={planState.loading || (!planState.error && plan?.key !== planKey)} error={planState.error}
             reload={() => { setPlanState({ loading: false, error: null }); loadPlan(); }} empMap={empMap} evaluators={evaluators} projectsById={projectsById} setRows={setRows}
+            department={info.department} onConfig={(c) => setPlan((p) => ({ ...p, config: c }))}
           />
         )}
         {step === 3 && <StepReview info={info} plan={plan} activate={activate} setActivate={setActivate} canActivate={canActivate} blockReason={blockReason} error={submitError} />}
@@ -329,11 +399,13 @@ export default function PeriodWizard() {
       <div className="flex flex-wrap items-center justify-between gap-2 border-t pt-4">
         <Button type="button" variant="outline" disabled={step === 0 || busy} onClick={() => go(step - 1)}><ArrowLeft className="size-4" />Sebelumnya</Button>
         <div className="flex items-center gap-3">
+          {draftId && !dirty && !busy && <span className="inline-flex items-center gap-1 text-xs text-emerald-700 dark:text-emerald-300" role="status"><Check className="size-3.5" />Draft tersimpan</span>}
+          <Button type="button" variant="outline" onClick={saveDraft} disabled={busy || resuming.loading}><Save className="size-4" />{busy ? 'Menyimpan…' : 'Simpan draft'}</Button>
           {stepError && step !== 2 && <span className="text-xs text-muted-foreground" role="status">{stepError}</span>}
           {step < 3 ? (
             <Button type="button" onClick={next} disabled={step !== 0 && !!stepError}>Berikutnya<ArrowRight className="size-4" /></Button>
           ) : (
-            <Button type="button" onClick={submit} disabled={busy}>{busy ? 'Membuat…' : activate && canActivate ? 'Buat & mulai periode' : 'Buat periode'}</Button>
+            <Button type="button" onClick={submit} disabled={busy}>{busy ? 'Menyimpan…' : activate && canActivate ? (draftId ? 'Simpan & mulai periode' : 'Buat & mulai periode') : (draftId ? 'Simpan periode' : 'Buat periode')}</Button>
           )}
         </div>
       </div>

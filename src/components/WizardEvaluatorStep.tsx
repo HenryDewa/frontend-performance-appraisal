@@ -11,6 +11,7 @@ import { FormSelect } from '@/components/ui/form-select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { api, qs } from '../api.ts';
 import { Badge, Card, ErrorBox, Field, Modal, SOURCE_LABEL } from '../ui.tsx';
 import {
   NEEDS_PROJECT, PLAN_SOURCES, applyReplace, commonTechLeads, eligibleUsers, groupByTechLead, missingMandatory, planReplace,
@@ -23,16 +24,37 @@ const SOURCE_ROLES = { tech_lead: ['tech_lead', 'engineering_manager'], project_
 const MANUAL_CLS = 'rounded border border-blue-200 bg-blue-50 px-1 text-[10px] font-semibold text-blue-700 dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-300';
 
 // ---------- konfigurasi ----------
-export function ConfigCard({ config }: { config?: any }) {
+export function ConfigCard({ config, department, onRecheck }: { config?: any; department?: string; onRecheck?: (c: any) => void }) {
+  const [busy, setBusy] = useState(false);
   if (!config) return null;
+  const recheck = async () => {
+    setBusy(true);
+    try {
+      const c = await api.get('/config-check' + qs({ department: department || '' }));
+      onRecheck?.(c);
+      if (c.ok) toast.success('Konfigurasi valid');
+    } catch (e: any) {
+      toast.error(e?.message ?? 'Gagal memeriksa konfigurasi');
+    } finally {
+      setBusy(false);
+    }
+  };
+  // set yang diperiksa: milik departemen bila punya konfigurasi sendiri, selain itu default
+  const scopeText = config.scope ? `konfigurasi departemen ${config.scope}` : 'konfigurasi default';
   return config.ok ? (
     <Card title="Pemeriksaan konfigurasi">
       <p className="flex items-center gap-2 text-sm text-emerald-700 dark:text-emerald-300"><CheckCircle2 className="size-4" aria-hidden />Konfigurasi indikator, bobot, dan ambang valid. Periode dapat dimulai.</p>
+      <p className="mt-1 text-xs text-muted-foreground">Yang diperiksa: {scopeText}.</p>
     </Card>
   ) : (
     <Card title="Pemeriksaan konfigurasi" className="border-red-300 dark:border-red-500/40">
       <p className="flex items-start gap-2 text-sm text-red-700 dark:text-red-300"><XCircle className="mt-0.5 size-4 shrink-0" aria-hidden /><span>{config.error}</span></p>
-      <p className="mt-2 text-xs text-muted-foreground">Periode masih bisa dibuat sebagai draft, tetapi belum bisa dimulai sebelum konfigurasi diperbaiki. <Link to="/config" className="font-medium text-primary hover:underline">Buka Konfigurasi</Link></p>
+      <p className="mt-2 text-xs text-muted-foreground">Yang diperiksa: <b>{scopeText}</b>. Perbaiki di halaman Konfigurasi pada set yang sama, lalu periksa ulang.</p>
+      <p className="mt-1 text-xs text-muted-foreground">Periode masih bisa dibuat sebagai draft, tetapi belum bisa dimulai sebelum konfigurasi diperbaiki.</p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <Button asChild size="sm" variant="outline"><Link to={config.scope ? `/config?department=${encodeURIComponent(config.scope)}` : '/config'} target="_blank" rel="noreferrer">Buka Konfigurasi</Link></Button>
+        {onRecheck && <Button type="button" size="sm" disabled={busy} onClick={recheck}><RefreshCw className={cn('size-4', busy && 'animate-spin')} />Periksa ulang</Button>}
+      </div>
     </Card>
   );
 }
@@ -322,7 +344,7 @@ function BulkMetricsModal({ rows, empMap, evaluators, setRows, onClose }: { rows
 }
 
 // ---------- langkah 3 ----------
-export function StepEvaluators({ plan, loading, error, reload, empMap, evaluators, projectsById, setRows }: { plan?: any; loading?: any; error?: any; reload?: any; empMap?: any; evaluators?: any; projectsById?: any; setRows?: any }) {
+export function StepEvaluators({ plan, loading, error, reload, empMap, evaluators, projectsById, setRows, department, onConfig }: { department?: string; onConfig?: (c: any) => void; plan?: any; loading?: any; error?: any; reload?: any; empMap?: any; evaluators?: any; projectsById?: any; setRows?: any }) {
   const rows = plan?.rows ?? [];
   const [filter, setFilter] = useState('all');
   const [warnText, setWarnText] = useState<any>(null);
@@ -383,7 +405,7 @@ export function StepEvaluators({ plan, loading, error, reload, empMap, evaluator
         </div>
       ) : plan && (
         <>
-          <ConfigCard config={plan.config} />
+          <ConfigCard config={plan.config} department={department} onRecheck={onConfig} />
           <div className="flex flex-wrap items-center gap-x-5 gap-y-2 rounded-lg border bg-card px-4 py-3 text-sm" aria-live="polite">
             <span><b>{counts.all}</b> karyawan</span>
             <span><b>{counts.evaluators}</b> evaluator ditugaskan</span>
