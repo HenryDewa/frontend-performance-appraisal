@@ -119,7 +119,7 @@ export default function Login() {
                 <span className='text-[13px] font-semibold'>Email</span>
                 <div className='relative'>
                   <Mail className='pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground' />
-                  <Input className='h-11 pl-9' type='email' value={email} onChange={(e) => setEmail(e.target.value)} autoComplete='username' required autoFocus placeholder='nama@perusahaan.com' />
+                  <Input className='h-11 pl-9' type='email' value={email} onChange={(e) => setEmail(e.target.value)} autoComplete='username' required autoFocus placeholder='nama@ogya.co.id' />
                 </div>
               </label>
 
