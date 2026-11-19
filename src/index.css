@@ -1,0 +1,104 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* Tema FDP-CMS: sidebar navy, konten terang, aksen biru (token shadcn/ui) */
+:root {
+  --radius: 0.75rem;
+  --background: #f5f7fb;
+  --foreground: #101c30;
+  --card: #ffffff;
+  --card-foreground: #101c30;
+  --popover: #ffffff;
+  --popover-foreground: #101c30;
+  --primary: #2563eb;
+  --primary-foreground: #ffffff;
+  --secondary: #eef2f9;
+  --secondary-foreground: #1c2d49;
+  --muted: #eef2f9;
+  --muted-foreground: #64748b;
+  --accent: #e8effe;
+  --accent-foreground: #1d4ed8;
+  --destructive: #d92d20;
+  --border: #e3e8f1;
+  --input: #d5dce9;
+  --ring: #2563eb;
+  --sidebar: #0e1a2c;
+  --sidebar-foreground: #a9b7cd;
+  --sidebar-accent: rgba(79, 141, 253, 0.18);
+  --success: #0e915d;
+  --warning: #b45309;
+}
+
+@theme inline {
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+@layer base {
+  * { @apply border-border outline-ring/50; }
+  body { @apply bg-background font-sans text-sm text-foreground antialiased; }
+  h1 { @apply text-2xl font-extrabold tracking-tight; }
+  a { @apply text-primary; }
+}
+
+/* Sembunyikan scrollbar tanpa menonaktifkan scroll */
+@utility no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  &::-webkit-scrollbar { display: none; }
+}
+
+/* ===== Mode gelap ===== */
+.dark {
+  --background: #0b1220;
+  --foreground: #e6ebf5;
+  --card: #111a2c;
+  --card-foreground: #e6ebf5;
+  --popover: #131d31;
+  --popover-foreground: #e6ebf5;
+  --primary: #3b82f6;
+  --primary-foreground: #ffffff;
+  --secondary: #1a2540;
+  --secondary-foreground: #dbe4f5;
+  --muted: #18233b;
+  --muted-foreground: #94a3b8;
+  --accent: #1b2c55;
+  --accent-foreground: #9db9ff;
+  --destructive: #ef5a4d;
+  --border: #243049;
+  --input: #2d3b5a;
+  --ring: #5b8cff;
+  --sidebar: #070d19;
+  --sidebar-foreground: #a9b7cd;
+  --sidebar-accent: rgba(79, 141, 253, 0.18);
+  --success: #34d399;
+  --warning: #f0b451;
+}
