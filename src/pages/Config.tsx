@@ -261,7 +261,7 @@ function Indicators({ department }: { department?: any }) {
   const open = (i) => { setError(null); setEdit(i); };
 
   // validasi live editor
-  const swFilled = edit ? Object.values(edit.source_weights).some((v) => v !== '' && v != null) : false;
+  const swFilled = edit ? edit.sources.some((k) => edit.source_weights[k] !== '' && edit.source_weights[k] != null) : false;
   const swSum = edit ? edit.sources.reduce((s, src) => s + num(edit.source_weights[src]), 0) : 0;
   const subBad = (edit?.sub_indicators ?? []).filter((s) => !/^[a-z0-9_]+$/.test(s.code) || !s.name);
   const subDup = (edit?.sub_indicators ?? []).length !== new Set((edit?.sub_indicators ?? []).map((s) => s.code)).size;
@@ -296,7 +296,8 @@ function Indicators({ department }: { department?: any }) {
     e.preventDefault();
     run(async () => {
       const wts = wOn ? Object.fromEntries(SENIORITIES.filter((s) => edit.weights[s] !== '' && edit.weights[s] != null).map((s) => [s, Number(edit.weights[s])])) : null;
-      const sw = Object.fromEntries(Object.entries(edit.source_weights).filter(([, v]) => v !== '' && v != null).map(([k, v]) => [k, Number(v)]));
+      // hanya bobot untuk sumber yang dipilih; bobot sumber yang sudah dilepas tidak ikut tersimpan (kolomnya disembunyikan sehingga tidak terlihat)
+      const sw = Object.fromEntries(Object.entries(edit.source_weights).filter(([k, v]) => edit.sources.includes(k) && v !== '' && v != null).map(([k, v]) => [k, Number(v)]));
       const body = {
         name: edit.name, description: edit.description || null, weight: Number(edit.weight), evidence_rule: edit.evidence_rule,
         sources: edit.sources, active: edit.active, rubric: edit.rubric, weights: wts,
