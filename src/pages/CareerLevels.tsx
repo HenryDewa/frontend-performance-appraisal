@@ -88,10 +88,21 @@ export default function CareerLevels() {
 
   const createOwn = async () => {
     if (!(await confirm({
-      title: `Buat jalur khusus ${department}?`, confirmText: 'Buat jalur khusus',
+      title: `Salin jalur default ke ${department}?`, confirmText: 'Salin dari default',
       description: 'Level, ekspektasi, dan syarat dari jalur default disalin sebagai titik awal. Setelah itu jalur departemen ini berdiri sendiri dan perubahan pada jalur default tidak lagi memengaruhinya.',
     }))) return;
     run(async () => { await api.post('/career/sets', { department }); toast.success(`Jalur khusus ${department} dibuat`); reload(); });
+  };
+  const mergeDefault = async () => {
+    if (!(await confirm({
+      title: `Salin level dari jalur default ke ${department}?`, confirmText: 'Salin',
+      description: 'Hanya level default yang kodenya belum ada di jalur ini yang ditambahkan. Level yang sudah ada tidak diubah atau ditimpa.',
+    }))) return;
+    run(async () => {
+      const r = await api.post('/career/sets', { department, merge: true });
+      if (r.added) toast.success(`${r.added} level disalin dari jalur default`); else toast.info('Semua level default sudah ada di jalur ini');
+      reload();
+    });
   };
   const resetOwn = async () => {
     if (!(await confirm({
@@ -109,13 +120,18 @@ export default function CareerLevels() {
           <option value="">Default (semua departemen)</option>
           {(depts.data ?? []).map((d) => <option key={d.id} value={d.name}>{d.name}{d.own_career ? ' — khusus' : ' — memakai default'}</option>)}
         </FormSelect>
-        {department && dep?.own_career && <Button variant="outline" size="sm" disabled={busy} onClick={resetOwn}><Undo2 />Kembali ke default</Button>}
+        {department && dep?.own_career && (
+          <>
+            <Button variant="outline" size="sm" disabled={busy} onClick={mergeDefault} title="Tambahkan level default yang belum ada di jalur ini"><Copy />Salin dari default</Button>
+            <Button variant="outline" size="sm" disabled={busy} onClick={resetOwn}><Undo2 />Kembali ke default</Button>
+          </>
+        )}
         <span className="text-xs text-muted-foreground">Departemen tanpa jalur khusus memakai jalur default. Daftar departemen dikelola di halaman <Link to="/departments" className="underline">Departemen</Link>.</span>
       </div>
       {usesDefault && (
         <div role="status" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-blue-200 bg-blue-50 px-3.5 py-3 text-[13px] text-blue-800 dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-300">
-          <span>Departemen <b>{department}</b> belum punya jalur karier sendiri dan memakai jalur default. Buat jalur khusus untuk mengubah level, ekspektasi, dan syaratnya hanya bagi departemen ini.</span>
-          <Button size="sm" disabled={busy} onClick={createOwn}><Copy />Buat jalur khusus</Button>
+          <span>Departemen <b>{department}</b> belum punya jalur karier sendiri dan memakai jalur default. Salin jalur default untuk membuat jalur khusus, lalu ubah level, ekspektasi, dan syaratnya hanya bagi departemen ini.</span>
+          <Button size="sm" disabled={busy} onClick={createOwn}><Copy />Salin dari jalur default</Button>
         </div>
       )}
       <div role="status" className="flex items-start gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3.5 py-2.5 text-[13px] text-blue-800 dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-300">
