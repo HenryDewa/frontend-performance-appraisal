@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input';
 import { FormSelect } from '@/components/ui/form-select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge, Card, ErrorBox, Field, Page, SOURCE_LABEL, useAction } from '../ui.tsx';
+import { todayWib } from '../lib/time.ts';
 import { StepEvaluators } from '../components/WizardEvaluatorStep.tsx';
 import { PLAN_SOURCES, missingMandatory } from '../lib/wizardEligibility.ts';
 
@@ -28,9 +29,9 @@ function addDays(s, n) {
   return iso(d);
 }
 function defaultInfo() {
-  const now = new Date();
-  const y = now.getFullYear();
-  const q = Math.floor(now.getMonth() / 3);
+  const [ys, ms] = todayWib().split('-');
+  const y = Number(ys);
+  const q = Math.floor((Number(ms) - 1) / 3);
   const start = iso(new Date(Date.UTC(y, q * 3, 1)));
   const end = iso(new Date(Date.UTC(y, q * 3 + 3, 0)));
   return { name: `Evaluasi Q${q + 1} ${y}`, department: '', start_date: start, end_date: end, deadline: addDays(end, 14) };

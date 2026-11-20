@@ -3,6 +3,7 @@ import { BookOpen, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { api } from '../api.ts';
 import { Badge, Card, Loading, fmtDate, useAction, useLoad } from '../ui.tsx';
+import { todayWib } from '../lib/time.ts';
 import { KindBadge, TRAIN_STATUS } from './career-common.tsx';
 
 /** Training yang ditugaskan pada seorang karyawan. canManage = manajemen; isSelf = pemilik profil. */
@@ -18,7 +19,7 @@ export default function TrainingCard({ employeeId, canManage, isSelf, rev = 0, o
     } catch (e) { toast.error(e.message); }
   });
   const rows = list.data ?? [];
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayStr = todayWib();
   return (
     <Card title="Training & pembelajaran" className="rounded-2xl">
       <Loading loading={list.loading} error={list.error}>

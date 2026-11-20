@@ -18,6 +18,7 @@ import { Input } from '@/components/ui/input';
 import { FormSelect } from '@/components/ui/form-select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge, Bar, Card, ErrorBox, Field, Loading, Modal, Page, SOURCE_LABEL, fmt, fmtDate, useAction, useLoad } from '../ui.tsx';
+import { todayWib } from '../lib/time.ts';
 
 function EmployeePicker({ selected, setSelected }: { selected?: any; setSelected?: any }) {
   const { data, error, loading } = useLoad(() => api.get('/employees?status=active&size=100'));
@@ -242,7 +243,7 @@ function StatTile({ icon: Icon, tone, label, value, sub }: { icon?: any; tone?: 
 const HEAD = 'text-xs uppercase tracking-wide text-muted-foreground';
 const DAY = 86400000;
 const daysBetween = (a, b) => Math.round((+new Date(b) - +new Date(a)) / DAY);
-const todayStr = () => new Date().toISOString().slice(0, 10);
+const todayStr = () => todayWib();
 const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
 const longDate = (s) => (s ? new Date(s).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '—');
 

@@ -21,6 +21,7 @@ import { useDebounced } from '../lib/useDebounced.ts';
 import type { Paged } from '../types.ts';
 import { useAuth, isHR } from '../auth.tsx';
 import { Badge, Card, Drawer, ErrorBox, Field, Loading, Modal, Page, fmtDate, useAction, useLoad } from '../ui.tsx';
+import { todayWib, addDaysWib } from '../lib/time.ts';
 
 const COMPLEXITY = {
   low: { label: 'Rendah', desc: 'Codebase kecil / requirement stabil', cls: 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300' },
@@ -431,7 +432,7 @@ function MembersDrawer({ project, canAdd, onChanged, onClose }: { project?: any;
   const done = (msg) => { toast.success(msg); reload(); onChanged?.(); };
   const end = async (m) => {
     if (!(await confirm({ title: `Akhiri penugasan ${m.name}?`, tone: 'warning', confirmText: 'Akhiri penugasan', description: 'Tanggal selesai diisi kemarin (hari terakhir penugasan) agar karyawan langsung tidak lagi dihitung anggota aktif. Riwayat penugasan tetap tersimpan.' }))) return;
-    run(async () => { await api.patch(`/assignments/${m.assignment_id}`, { end_date: new Date(Date.now() - 864e5).toISOString().slice(0, 10) }); done(`Penugasan ${m.name} diakhiri`); });
+    run(async () => { await api.patch(`/assignments/${m.assignment_id}`, { end_date: addDaysWib(-1) }); done(`Penugasan ${m.name} diakhiri`); });
   };
   const remove = async (m) => {
     if (!(await confirm({ title: `Hapus ${m.name} dari project?`, tone: 'danger', confirmText: 'Hapus', description: 'Catatan penugasan ini dihapus permanen sehingga hilang juga dari riwayat project karyawan. Bila hanya sudah selesai, gunakan "Akhiri" agar riwayat tetap tersimpan.' }))) return;
@@ -499,7 +500,7 @@ function AddMember({ project, memberIds, onCancel, onAdded }: { project: any; me
   const [q, setQ] = useState('');
   const dq = useDebounced(q.trim());
   const [pick, setPick] = useState<any>(null);
-  const [f, setF] = useState({ role: '', start_date: new Date().toISOString().slice(0, 10), end_date: '' });
+  const [f, setF] = useState({ role: '', start_date: todayWib(), end_date: '' });
   const { busy, error, run } = useAction();
   const found = useLoad(() => api.get<Paged<any>>('/employees' + qs({ status: 'active', q: dq, page: 1, size: 8 })), [dq]);
   const rows = found.data?.rows ?? [];

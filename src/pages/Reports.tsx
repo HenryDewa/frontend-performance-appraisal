@@ -8,6 +8,7 @@ import { PaginationBar } from '@/components/Pagination.tsx';
 import { useDebounced } from '../lib/useDebounced.ts';
 import type { Paged } from '../types.ts';
 import { Card, ErrorBox, Field, Loading, Page, fmtDate, useAction, useLoad } from '../ui.tsx';
+import { todayWib } from '../lib/time.ts';
 
 const FINAL = ['Approved', 'Published', 'Closed'];
 
@@ -74,7 +75,7 @@ const CX_CLS = {
   high: 'border-red-200 bg-red-50 text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300',
 } as const;
 const CX_ORDER = ['high', 'medium', 'low'] as const;
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => todayWib();
 const shortDate = (s: string) => new Date(s).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
 const isDone = (p: { end_date: string | null }) => !!p.end_date && p.end_date < today();
 /** Yang masih berjalan lebih dulu, lalu yang mulainya paling baru. */

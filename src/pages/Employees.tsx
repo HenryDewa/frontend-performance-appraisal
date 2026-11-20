@@ -26,6 +26,7 @@ import { useSkillSuggestions } from '../lib/useSkillSuggestions.ts';
 import { FormSelect } from '@/components/ui/form-select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge, Bar, Card, Drawer, ErrorBox, Field, Loading, Modal, Page, fmt, fmtDate, useAction, useLoad } from '../ui.tsx';
+import { todayWib } from '../lib/time.ts';
 
 const EMPTY = { code: '', name: '', email: '', position: 'Frontend Developer', seniority: 'middle', join_date: '', department: 'Frontend', tech_stack: '', lead_user_id: '' };
 
@@ -355,7 +356,7 @@ export function EmployeeProfile() {
   const { busy, error, run } = useAction();
 
   const e = emp.data;
-  const todayIso = new Date().toISOString().slice(0, 10);
+  const todayIso = todayWib();
   const canManage = isMgmt(user);
   const isSelf = e != null && user?.employee_id === e.id;
   return (

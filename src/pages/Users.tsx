@@ -3,6 +3,7 @@ import type { Department } from '../types.ts';
 import { toast } from 'sonner';
 import { Check, Copy, Eye, EyeOff, KeyRound, MoreHorizontal, Pencil, Plus, Power, RotateCcw, Search, ShieldCheck, Sparkles, UserCheck, UserX, UsersRound } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { parseServerTime } from '../lib/time.ts';
 import { useConfirm } from '@/components/ConfirmProvider';
 import { PersonAvatar } from '@/components/employee-ui.tsx';
 import { Button } from '@/components/ui/button';
@@ -30,10 +31,10 @@ function RoleBadge({ role }: { role?: any }) {
   return <span className={cn('inline-flex items-center whitespace-nowrap rounded-full border px-2.5 py-0.5 text-xs font-semibold', ROLE_INFO[role]?.cls)}>{ROLE_LABEL[role] ?? role}</span>;
 }
 
-/** "5 mnt lalu", "kemarin", dst. dari string 'YYYY-MM-DD HH:MM:SS' (UTC dari server). */
+/** "5 mnt lalu", "kemarin", dst. dari string 'YYYY-MM-DD HH:MM:SS' (jam WIB dari server). */
 function ago(s) {
   if (!s) return null;
-  const t = new Date(String(s).replace(' ', 'T') + 'Z').getTime();
+  const t = parseServerTime(s).getTime();
   if (Number.isNaN(t)) return String(s);
   const m = Math.max(0, Math.round((Date.now() - t) / 60000));
   if (m < 1) return 'baru saja';
@@ -43,7 +44,7 @@ function ago(s) {
   const d = Math.round(h / 24);
   return d === 1 ? 'kemarin' : d < 30 ? `${d} hari lalu` : new Date(t).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
 }
-const daysSince = (s) => (s ? (Date.now() - new Date(String(s).replace(' ', 'T') + 'Z').getTime()) / 86400000 : Infinity);
+const daysSince = (s) => (s ? (Date.now() - parseServerTime(s).getTime()) / 86400000 : Infinity);
 
 /** Password acak yang memenuhi kebijakan (>= 10 karakter, huruf dan angka). */
 function generatePassword() {

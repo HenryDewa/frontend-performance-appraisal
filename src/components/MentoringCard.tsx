@@ -8,6 +8,7 @@ import { FormSelect } from '@/components/ui/form-select';
 import { PersonAvatar } from '@/components/employee-ui.tsx';
 import { api } from '../api.ts';
 import { Badge, Card, ErrorBox, Field, Loading, Modal, fmtDate, useAction, useLoad } from '../ui.tsx';
+import { todayWib } from '../lib/time.ts';
 import { MENTOR_STATUS, SENIORITY_LABEL } from './career-common.tsx';
 
 const RANK = { junior: 1, middle: 2, senior: 3 };
@@ -16,7 +17,7 @@ function AddMentorModal({ employee, onClose, onDone }: { employee?: any; onClose
   const emps = useLoad(() => api.get('/employees?status=active&size=100'));
   const [mentor, setMentor] = useState('');
   const [focus, setFocus] = useState('');
-  const [start, setStart] = useState(new Date().toISOString().slice(0, 10));
+  const [start, setStart] = useState(todayWib());
   const [end, setEnd] = useState('');
   const { busy, error, run } = useAction();
   const options = (emps.data?.rows ?? []).filter((x) => x.id !== employee.id && RANK[x.seniority] > RANK[employee.seniority]);
@@ -60,7 +61,7 @@ export default function MentoringCard({ employee, canManage, rev = 0, onChange }
   const { busy, run } = useAction();
   const setStatus = (m, status) => run(async () => {
     try {
-      await api.patch(`/mentorships/${m.id}`, { status, ...(status === 'completed' ? { end_date: new Date().toISOString().slice(0, 10) } : {}) });
+      await api.patch(`/mentorships/${m.id}`, { status, ...(status === 'completed' ? { end_date: todayWib() } : {}) });
       toast.success('Mentoring diperbarui');
       list.reload();
       onChange?.();

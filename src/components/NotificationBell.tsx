@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
+import { parseServerTime } from '../lib/time.ts';
 import { api } from '../api.ts';
 
 const TYPES = {
@@ -17,12 +18,12 @@ const TYPES = {
 };
 
 function ago(iso) {
-  const s = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
+  const s = Math.max(0, (Date.now() - parseServerTime(iso).getTime()) / 1000);
   if (s < 60) return 'baru saja';
   if (s < 3600) return `${Math.floor(s / 60)} mnt lalu`;
   if (s < 86400) return `${Math.floor(s / 3600)} jam lalu`;
   if (s < 86400 * 7) return `${Math.floor(s / 86400)} hari lalu`;
-  return new Date(iso).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+  return parseServerTime(iso).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
 }
 
 export function NotificationBell() {
