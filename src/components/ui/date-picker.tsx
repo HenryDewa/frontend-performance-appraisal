@@ -13,7 +13,7 @@ const toDate = (v) => {
   return new Date(y, m - 1, d)
 }
 const toStr = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
-const pretty = (d) => d.toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })
+const pretty = (d) => `${String(d.getDate()).padStart(2, "0")}-${String(d.getMonth() + 1).padStart(2, "0")}-${d.getFullYear()}`
 
 /**
  * Date picker shadcn (Popover + Calendar). API sengaja menyerupai <input type="date">:

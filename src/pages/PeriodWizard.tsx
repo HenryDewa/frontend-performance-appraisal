@@ -13,7 +13,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { FormSelect } from '@/components/ui/form-select';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Badge, Card, ErrorBox, Field, Page, SOURCE_LABEL, useAction } from '../ui.tsx';
+import { Badge, Card, ErrorBox, Field, Page, SOURCE_LABEL, fmtDate, useAction } from '../ui.tsx';
 import { todayWib } from '../lib/time.ts';
 import { StepEvaluators } from '../components/WizardEvaluatorStep.tsx';
 import { PLAN_SOURCES, missingMandatory } from '../lib/wizardEligibility.ts';
@@ -179,8 +179,8 @@ function StepReview({ info, plan, activate, setActivate, canActivate, blockReaso
       <Card title="Ringkasan">
         <dl className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
           <div><dt className="text-xs text-muted-foreground">Nama periode</dt><dd className="font-medium">{info.name}</dd></div>
-          <div><dt className="text-xs text-muted-foreground">Rentang</dt><dd className="font-medium">{info.start_date} – {info.end_date}</dd></div>
-          <div><dt className="text-xs text-muted-foreground">Tenggat pengisian</dt><dd className="font-medium">{info.deadline}</dd></div>
+          <div><dt className="text-xs text-muted-foreground">Rentang</dt><dd className="font-medium">{fmtDate(info.start_date)} – {fmtDate(info.end_date)}</dd></div>
+          <div><dt className="text-xs text-muted-foreground">Tenggat pengisian</dt><dd className="font-medium">{fmtDate(info.deadline)}</dd></div>
           <div><dt className="text-xs text-muted-foreground">Karyawan</dt><dd className="font-medium">{rows.length}</dd></div>
         </dl>
         <div className="mt-4 flex flex-wrap gap-2">

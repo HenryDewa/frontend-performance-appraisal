@@ -13,7 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { api } from '../api.ts';
 import { ROLE_LABEL, useAuth } from '../auth.tsx';
-import { Badge, Card, ErrorBox, Field, Loading, Modal, Page, useAction, useLoad } from '../ui.tsx';
+import { Badge, Card, ErrorBox, Field, Loading, Modal, Page, fmtDate, useAction, useLoad } from '../ui.tsx';
 
 const ROLE_INFO = {
   super_admin: { desc: 'Akses penuh: konfigurasi, pengguna, dan audit log.', cls: 'border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-300', bar: 'bg-violet-500' },
@@ -42,7 +42,7 @@ function ago(s) {
   const h = Math.round(m / 60);
   if (h < 24) return `${h} jam lalu`;
   const d = Math.round(h / 24);
-  return d === 1 ? 'kemarin' : d < 30 ? `${d} hari lalu` : new Date(t).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+  return d === 1 ? 'kemarin' : d < 30 ? `${d} hari lalu` : fmtDate(s);
 }
 const daysSince = (s) => (s ? (Date.now() - parseServerTime(s).getTime()) / 86400000 : Infinity);
 

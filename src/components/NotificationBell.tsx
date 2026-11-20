@@ -6,6 +6,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import { parseServerTime } from '../lib/time.ts';
+import { fmtDate } from '../ui.tsx';
 import { api } from '../api.ts';
 
 const TYPES = {
@@ -23,7 +24,7 @@ function ago(iso) {
   if (s < 3600) return `${Math.floor(s / 60)} mnt lalu`;
   if (s < 86400) return `${Math.floor(s / 3600)} jam lalu`;
   if (s < 86400 * 7) return `${Math.floor(s / 86400)} hari lalu`;
-  return parseServerTime(iso).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+  return fmtDate(iso);
 }
 
 export function NotificationBell() {

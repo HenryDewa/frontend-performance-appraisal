@@ -39,6 +39,16 @@ export const api = {
   put: <T = any>(p: string, b?: any): Promise<T> => request('PUT', p, b),
   patch: <T = any>(p: string, b?: any): Promise<T> => request('PATCH', p, b),
   del: <T = any>(p: string): Promise<T> => request('DELETE', p),
+  /** Buka file (PDF/gambar) yang butuh token di tab baru. Tab dibuka dulu agar tidak diblokir popup blocker. */
+  openFile: async (p: string) => {
+    const w = window.open('', '_blank');
+    try {
+      const res = await request('GET', p, null, true);
+      const url = URL.createObjectURL(await res.blob());
+      if (w) w.location.href = url; else window.location.href = url;
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch (e) { w?.close(); throw e; }
+  },
   download: async (p: string, filename?: string) => {
     const res = await request('GET', p, null, true);
     const url = URL.createObjectURL(await res.blob());

@@ -76,7 +76,7 @@ const CX_CLS = {
 } as const;
 const CX_ORDER = ['high', 'medium', 'low'] as const;
 const today = () => todayWib();
-const shortDate = (s: string) => new Date(s).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+const shortDate = (s: string) => fmtDate(s);
 const isDone = (p: { end_date: string | null }) => !!p.end_date && p.end_date < today();
 /** Yang masih berjalan lebih dulu, lalu yang mulainya paling baru. */
 const byRecency = (list: LoadProject[]) => [...list].sort((a, b) => Number(isDone(a)) - Number(isDone(b)) || b.start_date.localeCompare(a.start_date));

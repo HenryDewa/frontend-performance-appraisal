@@ -129,7 +129,16 @@ export const Badge = ({ children, tone, className }: { children?: React.ReactNod
 );
 
 export const fmt = (n) => (n == null ? '—' : Number(n).toLocaleString('id-ID', { maximumFractionDigits: 2 }));
-export const fmtDate = (s) => (s ? String(s).slice(0, 10) : '—');
+/** Tanggal tampilan DD-MM-YYYY dari 'YYYY-MM-DD' (atau datetime). Penyimpanan dan pengiriman ke API tetap YYYY-MM-DD. */
+export const fmtDate = (s) => {
+  const m = s ? /^(\d{4})-(\d{2})-(\d{2})/.exec(String(s)) : null;
+  return m ? `${m[3]}-${m[2]}-${m[1]}` : s ? String(s) : '—';
+};
+/** DD-MM-YYYY HH:MM[:SS] dari 'YYYY-MM-DD HH:MM:SS'. */
+export const fmtDateTime = (s) => {
+  const m = s ? /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}:\d{2}(?::\d{2})?)/.exec(String(s)) : null;
+  return m ? `${m[3]}-${m[2]}-${m[1]} ${m[4]}` : fmtDate(s);
+};
 export const SOURCE_LABEL = { tech_lead: 'Tech Lead / EM', project_manager: 'Project Manager', client: 'Client', self: 'Self-assessment', metrics: 'Objective Metrics' };
 
 /** Jalankan aksi async dengan state busy + error. */

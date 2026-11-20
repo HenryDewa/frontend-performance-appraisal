@@ -245,7 +245,7 @@ const DAY = 86400000;
 const daysBetween = (a, b) => Math.round((+new Date(b) - +new Date(a)) / DAY);
 const todayStr = () => todayWib();
 const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
-const longDate = (s) => (s ? new Date(s).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '—');
+const longDate = fmtDate;
 
 const FINAL = ['Approved', 'Published', 'Closed'];
 const PENDING = ['Assigned', 'In Progress', 'Needs Revision'];

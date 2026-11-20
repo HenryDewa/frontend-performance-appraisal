@@ -9,7 +9,7 @@ import { FormSelect } from '@/components/ui/form-select';
 import { Input } from '@/components/ui/input';
 import { PersonAvatar } from '@/components/employee-ui.tsx';
 import { api, qs } from '../api.ts';
-import { Card, Drawer, ErrorBox, Loading, Page, useLoad } from '../ui.tsx';
+import { Card, Drawer, ErrorBox, Loading, Page, fmtDateTime, useLoad } from '../ui.tsx';
 
 // kategori = awalan kode aksi ("auth.login" -> auth)
 const CATEGORY = {
@@ -130,7 +130,7 @@ function Detail({ row, onClose }: { row?: any; onClose?: any }) {
     <Drawer title="Rincian aktivitas" onClose={onClose}>
       <div className="mb-4 flex items-center gap-3">
         <span className={cn('grid size-11 shrink-0 place-items-center rounded-xl', c.cls)}><c.Icon className="size-5" /></span>
-        <div className="min-w-0 leading-tight"><b className="block">{row.actor_name ?? 'Sistem'} {verbOf(row.action)}</b><span className="text-xs text-muted-foreground">{row.at}</span></div>
+        <div className="min-w-0 leading-tight"><b className="block">{row.actor_name ?? 'Sistem'} {verbOf(row.action)}</b><span className="text-xs text-muted-foreground">{fmtDateTime(row.at)}</span></div>
       </div>
       <dl className="mb-4 grid grid-cols-[110px_1fr] gap-x-3 gap-y-2 rounded-xl bg-muted/50 p-3 text-[13px]">
         <dt className="text-muted-foreground">Kode aksi</dt><dd><code className="rounded bg-card px-1.5 py-0.5 text-xs">{row.action}</code></dd>

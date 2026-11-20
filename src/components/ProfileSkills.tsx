@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { Award, GraduationCap, Pencil, Plus, Sparkles, Trash2 } from 'lucide-react';
+import { Award, FileText, GraduationCap, Paperclip, Pencil, Plus, Sparkles, Trash2, Upload } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useConfirm } from '@/components/ConfirmProvider';
 import { Button } from '@/components/ui/button';
@@ -132,16 +132,40 @@ const KINDS = [
   { value: 'sertifikasi', label: 'Sertifikasi', icon: Award, tone: 'amber' },
   { value: 'training', label: 'Training', icon: GraduationCap, tone: 'blue' },
 ] as const;
-const EMPTY = { id: null as number | null, kind: 'sertifikasi', title: '', date: '', notes: '' };
+const EMPTY = { id: null as number | null, kind: 'sertifikasi', title: '', date: '', notes: '', file_name: null as string | null };
+const MAX_FILE = 3 * 1024 * 1024;
+const FILE_TYPES = ['application/pdf', 'image/png', 'image/jpeg'];
+const sizeLabel = (n: number) => (n >= 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
+/** File -> base64 tanpa awalan data URL. */
+const toBase64 = (f: File) => new Promise<string>((ok, fail) => {
+  const r = new FileReader();
+  r.onload = () => ok(String(r.result).split(',')[1] ?? '');
+  r.onerror = () => fail(new Error('File tidak dapat dibaca'));
+  r.readAsDataURL(f);
+});
 
 function CertForm({ employeeId, initial, onClose, onSaved }: { employeeId: number; initial: typeof EMPTY; onClose: () => void; onSaved: () => void }) {
   const [f, setF] = useState(initial);
+  const [file, setFile] = useState<File | null>(null);
+  const [fileError, setFileError] = useState('');
   const { busy, error, run } = useAction();
   const isSertifikasi = f.kind === 'sertifikasi';
+  const needFile = isSertifikasi && !file && !initial.file_name; // sertifikasi wajib punya file; training tidak
+  const pick = (e) => {
+    const picked: File | undefined = e.target.files?.[0];
+    e.target.value = '';
+    if (!picked) return;
+    if (!FILE_TYPES.includes(picked.type)) return setFileError('Format file harus PDF, JPG, atau PNG');
+    if (picked.size > MAX_FILE) return setFileError(`Ukuran file ${sizeLabel(picked.size)} melebihi batas 3 MB`);
+    setFileError('');
+    setFile(picked);
+  };
   const submit = (e) => {
     e.preventDefault();
+    if (needFile) return setFileError('Sertifikasi wajib melampirkan file sertifikat');
     run(async () => {
-      const body = { kind: f.kind, title: f.title.trim(), date: f.date, notes: f.notes.trim() || null };
+      const body: any = { kind: f.kind, title: f.title.trim(), date: f.date, notes: f.notes.trim() || null };
+      if (file) body.file = { name: file.name, data: await toBase64(file) };
       if (f.id) await api.patch(`/certifications/${f.id}`, body);
       else await api.post(`/employees/${employeeId}/certifications`, body);
       toast.success(f.id ? 'Data diperbarui' : `${isSertifikasi ? 'Sertifikasi' : 'Training'} ditambahkan`);
@@ -162,11 +186,23 @@ function CertForm({ employeeId, initial, onClose, onSaved }: { employeeId: numbe
         <Field label={isSertifikasi ? 'Tanggal pengambilan sertifikat' : 'Tanggal training'}>
           <DatePicker value={f.date} onChange={(e) => setF({ ...f, date: e.target.value })} required />
         </Field>
+        <Field label={isSertifikasi ? 'File sertifikat' : 'Bukti / materi training'} hint={isSertifikasi ? 'Wajib. PDF, JPG, atau PNG, maksimal 3 MB.' : 'Opsional. PDF, JPG, atau PNG, maksimal 3 MB.'}>
+          <label className={cn('flex cursor-pointer items-center gap-3 rounded-xl border border-dashed px-3 py-3 text-sm transition-colors hover:bg-muted/40', fileError && 'border-destructive')}>
+            <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-muted text-muted-foreground"><Upload className="size-4" /></span>
+            <span className="min-w-0 flex-1">
+              {file ? <><b className="block truncate">{file.name}</b><span className="text-xs text-muted-foreground">{sizeLabel(file.size)} · klik untuk mengganti</span></>
+                : initial.file_name ? <><b className="block truncate">{initial.file_name}</b><span className="text-xs text-muted-foreground">Sudah terlampir · klik untuk mengganti</span></>
+                : <span className="text-muted-foreground">Klik untuk memilih file{isSertifikasi ? ' sertifikat' : ''}</span>}
+            </span>
+            <input type="file" accept="application/pdf,image/png,image/jpeg,.pdf,.png,.jpg,.jpeg" className="sr-only" onChange={pick} />
+          </label>
+          {fileError && <p role="alert" className="mt-1 text-xs text-destructive">{fileError}</p>}
+        </Field>
         <Field label="Keterangan" hint="Opsional: penyelenggara, nomor sertifikat, skor, atau catatan lain.">
           <Textarea value={f.notes} onChange={(e) => setF({ ...f, notes: e.target.value })} maxLength={1000} rows={3} />
         </Field>
         <ErrorBox error={error} />
-        <div className="mt-2 flex gap-2"><Button disabled={busy || !f.title.trim() || !f.date}>Simpan</Button><Button type="button" variant="outline" onClick={onClose}>Batal</Button></div>
+        <div className="mt-2 flex gap-2"><Button disabled={busy || !f.title.trim() || !f.date}>{busy ? 'Menyimpan…' : 'Simpan'}</Button><Button type="button" variant="outline" onClick={onClose}>Batal</Button></div>
       </form>
     </Modal>
   );
@@ -180,6 +216,7 @@ export function CertificationsCard({ employeeId, canEdit }: CardProps) {
   const { run } = useAction();
   const rows = list.data ?? [];
 
+  const openFile = (c) => run(async () => { try { await api.openFile(`/certifications/${c.id}/file`); } catch (e) { toast.error(e.message); } });
   const remove = async (c) => {
     if (!(await confirm({ title: `Hapus ${c.title}?`, tone: 'danger', confirmText: 'Hapus' }))) return;
     run(async () => { await api.del(`/certifications/${c.id}`); toast.success('Data dihapus'); list.reload(); });
@@ -205,10 +242,15 @@ export function CertificationsCard({ employeeId, canEdit }: CardProps) {
                     <div className="flex flex-wrap items-center gap-2"><span className="font-semibold">{c.title}</span><Badge tone={k.tone}>{k.label}</Badge></div>
                     <div className="text-xs text-muted-foreground">{c.kind === 'sertifikasi' ? 'Diambil' : 'Tanggal'} {fmtDate(c.date)}</div>
                     {c.notes && <p className="mt-1 whitespace-pre-line text-sm text-muted-foreground">{c.notes}</p>}
+                    {c.has_file ? (
+                      <button type="button" onClick={() => openFile(c)} className="mt-1.5 inline-flex max-w-full items-center gap-1.5 rounded-md border bg-background px-2 py-1 text-xs font-medium text-primary hover:bg-muted" title="Buka file">
+                        <FileText className="size-3.5 shrink-0" /><span className="truncate">{c.file_name}</span><span className="shrink-0 font-normal text-muted-foreground">{sizeLabel(c.file_size)}</span>
+                      </button>
+                    ) : c.kind === 'sertifikasi' && <span className="mt-1.5 inline-flex items-center gap-1 text-xs text-amber-700 dark:text-amber-400"><Paperclip className="size-3.5" />File sertifikat belum dilampirkan{canEdit ? ' — klik ubah untuk melampirkan' : ''}</span>}
                   </div>
                   {canEdit && (
                     <div className="flex gap-1">
-                      <Button variant="ghost" size="icon" className="size-8" aria-label={`Ubah ${c.title}`} onClick={() => setForm({ id: c.id, kind: c.kind, title: c.title, date: String(c.date).slice(0, 10), notes: c.notes ?? '' })}><Pencil className="size-4" /></Button>
+                      <Button variant="ghost" size="icon" className="size-8" aria-label={`Ubah ${c.title}`} onClick={() => setForm({ id: c.id, kind: c.kind, title: c.title, date: String(c.date).slice(0, 10), notes: c.notes ?? '', file_name: c.has_file ? c.file_name : null })}><Pencil className="size-4" /></Button>
                       <Button variant="ghost" size="icon" className="size-8" aria-label={`Hapus ${c.title}`} onClick={() => remove(c)}><Trash2 className="size-4 text-destructive" /></Button>
                     </div>
                   )}

@@ -30,7 +30,7 @@ const COMPLEXITY = {
 };
 const INDUSTRIES = ['Banking', 'Fintech', 'E-commerce', 'Healthcare', 'Education', 'Logistics', 'Telecom', 'Government', 'Media', 'Manufacturing'];
 const HEAD = 'text-xs uppercase tracking-wide text-muted-foreground';
-const longDate = (s) => (s ? new Date(s).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '—');
+const longDate = fmtDate;
 
 function ComplexityBadge({ value }: { value?: any }) {
   const c = COMPLEXITY[value] ?? COMPLEXITY.medium;
