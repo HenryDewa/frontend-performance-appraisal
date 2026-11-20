@@ -4,7 +4,7 @@ import { DatePicker } from '@/components/ui/date-picker';
 import { useConfirm } from '@/components/ConfirmProvider';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
-import { Award, BarChart3, Briefcase, CalendarClock, GraduationCap, LayoutDashboard, TrendingUp, AlertTriangle, CheckCircle2, Eye, FolderX, Layers, LayoutGrid, List, MoreHorizontal, Plus, Power, RotateCcw, Search, Trash2, UserX, UsersRound } from 'lucide-react';
+import { Award, BarChart3, Briefcase, CalendarClock, GraduationCap, LayoutDashboard, TrendingUp, AlertTriangle, CheckCircle2, Eye, FolderX, Layers, LayoutGrid, List, Lock, MoreHorizontal, Plus, Power, RotateCcw, Search, Trash2, UserX, UsersRound } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Chips, DataFlags, PersonAvatar, SENIORITY_BAR, SeniorityBadge, splitStack } from '@/components/employee-ui.tsx';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -361,6 +361,12 @@ export function EmployeeProfile() {
   const isSelf = e != null && user?.employee_id === e.id;
   return (
     <Page title={e ? e.name : 'Profil karyawan'} eyebrow={isSelf ? 'Profil & karier saya' : 'Profil karyawan'} actions={isHR(user) && e && <Button variant="outline" onClick={() => setEditing(true)}>Ubah</Button>}>
+      {e && user?.role === 'tech_lead' && !isSelf && (
+        <div role="status" className="mb-4 flex items-start gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3.5 py-2.5 text-[13px] text-blue-800 dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-300">
+          <Lock className="mt-0.5 size-4 shrink-0" />
+          <div>Anda melihat profil anggota tim Anda sebagai supervisor. Tampilan hanya baca; hasil evaluasi baru terlihat setelah dipublikasikan, tanpa rincian skor per sumber penilai.</div>
+        </div>
+      )}
       <Loading loading={emp.loading} error={emp.error}>
         {e && (() => {
           const hl = [...(hist.data ?? [])];

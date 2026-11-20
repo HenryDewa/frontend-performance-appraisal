@@ -57,7 +57,7 @@ const NAV = [
   ['/my-profile', 'Profil & Karier Saya', UserRound, ['employee', 'staff'], 'Pengembangan'],
   ['/training', 'Katalog Training', GraduationCap, ['super_admin', 'hr', 'engineering_manager', 'employee', 'staff'], 'Pengembangan'],
   ['/gaps', 'Analisis Gap', Radar, ['super_admin', 'hr', 'engineering_manager'], 'Pengembangan'],
-  ['/dev-plans', 'Rencana Pengembangan', Target, ['super_admin', 'hr', 'engineering_manager', 'employee', 'staff'], 'Pengembangan'],
+  ['/dev-plans', 'Rencana Pengembangan', Target, ['super_admin', 'hr', 'engineering_manager', 'employee', 'staff', 'tech_lead'], 'Pengembangan'],
   ['/reports', 'Laporan', BarChart3, ['super_admin', 'hr', 'engineering_manager'], 'Pengembangan'],
   ['/users', 'Pengguna', UserCog, ['super_admin'], 'Administrasi'],
   ['/config', 'Konfigurasi', SlidersHorizontal, ['super_admin'], 'Administrasi'],
