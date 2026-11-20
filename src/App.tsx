@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { NavLink, Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import {
   BarChart3, Briefcase, CalendarDays, ChevronDown, CircleHelp, GraduationCap, ClipboardList, LayoutDashboard, LogOut, Menu, Radar, Search, UserRound,
-  Building2, ScanSearch, ShieldCheck, SlidersHorizontal, Star, Target, UserCog, Users as UsersIcon,
+  Building2, ScanSearch, ShieldCheck, SlidersHorizontal, Star, Target, TrendingUp, UserCog, Users as UsersIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -38,6 +38,7 @@ import Training from './pages/Training.tsx';
 import PeriodWizard from './pages/PeriodWizard.tsx';
 import CalibrationSession from './pages/CalibrationSession.tsx';
 import Gaps from './pages/Gaps.tsx';
+import CareerLevels from './pages/CareerLevels.tsx';
 import ForgotPassword from './pages/ForgotPassword.tsx';
 import ResetPassword from './pages/ResetPassword.tsx';
 
@@ -60,6 +61,7 @@ const NAV = [
   ['/reports', 'Laporan', BarChart3, ['super_admin', 'hr', 'engineering_manager'], 'Pengembangan'],
   ['/users', 'Pengguna', UserCog, ['super_admin'], 'Administrasi'],
   ['/config', 'Konfigurasi', SlidersHorizontal, ['super_admin'], 'Administrasi'],
+  ['/career-levels', 'Jalur Karier', TrendingUp, ['super_admin', 'hr'], 'Administrasi'],
   ['/audit', 'Audit Log', ShieldCheck, ['super_admin'], 'Administrasi'],
 ];
 
@@ -293,6 +295,7 @@ export default function App() {
             <Route path="/reports" element={<Reports />} />
             <Route path="/users" element={<Guard user={user} path="/users"><Users /></Guard>} />
             <Route path="/config" element={<Guard user={user} path="/config"><Config /></Guard>} />
+            <Route path="/career-levels" element={<Guard user={user} path="/career-levels"><CareerLevels /></Guard>} />
             <Route path="/audit" element={<Guard user={user} path="/audit"><AuditLog /></Guard>} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
