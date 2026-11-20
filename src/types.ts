@@ -22,6 +22,7 @@ export interface Department {
   active: boolean;
   employees: number;
   own_config: boolean;
+  own_career: boolean;
   positions: Position[];
 }
 

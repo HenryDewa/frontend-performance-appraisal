@@ -1,6 +1,7 @@
 import { useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
-import { AlertTriangle, Info, Pencil, Plus, Power } from 'lucide-react';
+import { AlertTriangle, Copy, Info, Pencil, Plus, Power, Undo2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useConfirm } from '@/components/ConfirmProvider';
 import { Button } from '@/components/ui/button';
@@ -9,6 +10,7 @@ import { FormSelect } from '@/components/ui/form-select';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { api } from '../api.ts';
+import type { Department } from '../types.ts';
 import { Badge, Card, Drawer, ErrorBox, Field, Loading, Page, useAction, useLoad } from '../ui.tsx';
 
 const SENIORITIES = ['junior', 'middle', 'senior'];
@@ -28,7 +30,15 @@ const editOf = (l: Level) => ({
 
 /** Pengaturan jalur karier (level, ekspektasi, syarat kesiapan naik level). Hanya HR dan Super Admin. */
 export default function CareerLevels() {
-  const { data, error, loading, reload } = useLoad(() => api.get<Level[]>('/career/levels'));
+  const [params, setParams] = useSearchParams();
+  const department = params.get('department') || '';
+  const pickDept = (v: string) => { const n = new URLSearchParams(params); if (v) n.set('department', v); else n.delete('department'); setParams(n, { replace: true }); };
+  const depts = useLoad(() => api.get<Department[]>('/departments'));
+  const dep = (depts.data ?? []).find((d) => d.name === department);
+  // departemen tanpa jalur sendiri memakai jalur default; tampilan dan form hanya aktif untuk set yang benar-benar dimiliki
+  const usesDefault = !!department && !!depts.data && !dep?.own_career;
+  const { data, error, loading, reload: reloadLevels } = useLoad(() => (usesDefault ? Promise.resolve([] as Level[]) : api.get<Level[]>(`/career/levels${department ? `?department=${encodeURIComponent(department)}` : ''}`)), [department, usesDefault]);
+  const reload = () => { reloadLevels(); depts.reload(); };
   const [edit, setEdit] = useState<any>(null);
   const { busy, error: err, run, setError } = useAction();
   const confirm = useConfirm();
@@ -62,7 +72,7 @@ export default function CareerLevels() {
         expectations: lines, min_avg_score: score, min_tenure_months: tenure, active: edit.active,
       };
       if (edit.id) await api.patch(`/career/levels/${edit.id}`, body);
-      else await api.post('/career/levels', { ...body, code: edit.code });
+      else await api.post('/career/levels', { ...body, code: edit.code, department: department || null });
       toast.success(edit.id ? `Level "${body.name}" diperbarui` : `Level "${body.name}" ditambahkan`);
       setEdit(null); reload();
     });
@@ -76,8 +86,38 @@ export default function CareerLevels() {
     run(async () => { await api.patch(`/career/levels/${l.id}`, { active: !l.active }); toast.success(`${l.name} ${l.active ? 'dinonaktifkan' : 'diaktifkan'}`); reload(); });
   };
 
+  const createOwn = async () => {
+    if (!(await confirm({
+      title: `Buat jalur khusus ${department}?`, confirmText: 'Buat jalur khusus',
+      description: 'Level, ekspektasi, dan syarat dari jalur default disalin sebagai titik awal. Setelah itu jalur departemen ini berdiri sendiri dan perubahan pada jalur default tidak lagi memengaruhinya.',
+    }))) return;
+    run(async () => { await api.post('/career/sets', { department }); toast.success(`Jalur khusus ${department} dibuat`); reload(); });
+  };
+  const resetOwn = async () => {
+    if (!(await confirm({
+      title: `Kembalikan ${department} ke jalur default?`, tone: 'warning', confirmText: 'Kembali ke default',
+      description: 'Seluruh level jalur khusus departemen ini dihapus, termasuk perubahan yang pernah dibuat. Karyawan departemen ini lalu memakai jalur default.',
+    }))) return;
+    run(async () => { await api.del(`/career/sets?department=${encodeURIComponent(department)}`); toast.success(`${department} kembali memakai jalur default`); reload(); });
+  };
+
   return (
-    <Page eyebrow="Administrasi" title="Jalur karier" actions={<Button onClick={() => open({ ...blank, sort: String((levels.at(-1)?.sort ?? 0) + 1) })}><Plus />Level</Button>}>
+    <Page eyebrow="Administrasi" title="Jalur karier" actions={!usesDefault && <Button onClick={() => open({ ...blank, sort: String((levels.at(-1)?.sort ?? 0) + 1) })}><Plus />Level</Button>}>
+      <div className="flex flex-wrap items-center gap-3 rounded-2xl border bg-card p-3 shadow-sm">
+        <span className="text-sm font-medium">Jalur untuk</span>
+        <FormSelect className="w-auto min-w-48" value={department} onChange={(e) => pickDept(e.target.value)} aria-label="Pilih jalur karier">
+          <option value="">Default (semua departemen)</option>
+          {(depts.data ?? []).map((d) => <option key={d.id} value={d.name}>{d.name}{d.own_career ? ' — khusus' : ' — memakai default'}</option>)}
+        </FormSelect>
+        {department && dep?.own_career && <Button variant="outline" size="sm" disabled={busy} onClick={resetOwn}><Undo2 />Kembali ke default</Button>}
+        <span className="text-xs text-muted-foreground">Departemen tanpa jalur khusus memakai jalur default. Daftar departemen dikelola di halaman <Link to="/departments" className="underline">Departemen</Link>.</span>
+      </div>
+      {usesDefault && (
+        <div role="status" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-blue-200 bg-blue-50 px-3.5 py-3 text-[13px] text-blue-800 dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-300">
+          <span>Departemen <b>{department}</b> belum punya jalur karier sendiri dan memakai jalur default. Buat jalur khusus untuk mengubah level, ekspektasi, dan syaratnya hanya bagi departemen ini.</span>
+          <Button size="sm" disabled={busy} onClick={createOwn}><Copy />Buat jalur khusus</Button>
+        </div>
+      )}
       <div role="status" className="flex items-start gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3.5 py-2.5 text-[13px] text-blue-800 dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-300">
         <Info className="mt-0.5 size-4 shrink-0" />
         <div>
@@ -122,7 +162,7 @@ export default function CareerLevels() {
               </div>
             </div>
           ))}
-          {levels.length === 0 && <Card><p className="py-6 text-center text-muted-foreground">Belum ada level. Tambahkan level pertama.</p></Card>}
+          {levels.length === 0 && !usesDefault && !loading && <Card><p className="py-6 text-center text-muted-foreground">Belum ada level. Tambahkan level pertama.</p></Card>}
         </div>
       </Loading>
 
