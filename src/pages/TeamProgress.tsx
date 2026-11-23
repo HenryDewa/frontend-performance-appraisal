@@ -9,22 +9,22 @@ import { api, qs } from '../api.ts';
 import { Badge, Bar, Card, Loading, Page, SOURCE_LABEL, fmt, fmtDate, useLoad } from '../ui.tsx';
 import { StatCard } from './Dashboard.tsx';
 
-interface TeamAssessment { source: string; status: 'draft' | 'submitted'; project_name: string | null }
-interface TeamEvaluation {
+export interface TeamAssessment { source: string; status: 'draft' | 'submitted'; project_name: string | null }
+export interface TeamEvaluation {
   status: string; published: boolean; final_score: number | null; classification: string | null;
   assessments_total: number; assessments_done: number; assessments: TeamAssessment[]; my_assessment: { id: number; status: 'draft' | 'submitted' } | null;
 }
-interface TeamDevelopment {
+export interface TeamDevelopment {
   latest: { period: string; final_score: number; classification: string | null } | null; previous_score: number | null;
   plans_active: number; plan_overdue: number; trainings_active: number; trainings_overdue: number; mentoring_active: number;
 }
-interface TeamMember { id: number; code: string; name: string; position: string; seniority: string; department: string; development: TeamDevelopment; evaluation: TeamEvaluation | null }
-interface TeamPeriod { id: number; name: string; start_date: string; end_date: string; deadline: string; status: string }
-interface TeamSummary {
+export interface TeamMember { id: number; code: string; name: string; position: string; seniority: string; department: string; development: TeamDevelopment; evaluation: TeamEvaluation | null }
+export interface TeamPeriod { id: number; name: string; start_date: string; end_date: string; deadline: string; status: string }
+export interface TeamSummary {
   with_result: number; avg_score: number | null; distribution: Record<string, number>;
   overdue_trainings: number; overdue_plan_activities: number;
 }
-interface TeamOverview {
+export interface TeamOverview {
   periods: TeamPeriod[]; period: TeamPeriod | null; members: TeamMember[]; team: TeamSummary;
   summary: { members: number; in_period: number; published: number; complete: number; my_pending: number };
 }

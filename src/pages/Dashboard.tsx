@@ -10,6 +10,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { FormSelect } from '@/components/ui/form-select';
 import { TaskQueue } from '@/components/TaskQueue';
+import { PersonAvatar } from '@/components/employee-ui.tsx';
+import type { TeamMember, TeamOverview } from './TeamProgress.tsx';
+import { todayWib } from '../lib/time.ts';
 import { api, qs } from '../api.ts';
 import { useAuth } from '../auth.tsx';
 import { Badge, Bar, Card, Loading, Page, fmt, fmtDate, useLoad } from '../ui.tsx';
@@ -18,7 +21,8 @@ export default function Dashboard() {
   const { user } = useAuth();
   if (user.role === 'employee') return <EmployeeDashboard />;
   if (['super_admin', 'hr', 'engineering_manager'].includes(user.role)) return <ManagementDashboard />;
-  return <TaskDashboard />; // tech lead / PM / client: fokus pada tugas penilaian
+  if (user.role === 'tech_lead') return <TechLeadDashboard />;
+  return <TaskDashboard />; // PM / client: fokus pada tugas penilaian
 }
 
 function TaskDashboard() {
@@ -698,6 +702,126 @@ function EmployeeDashboard() {
           );
         })()}
       </Loading>
+    </Page>
+  );
+}
+
+// ---------------------------------------------------------------- Tech Lead
+const dayDiff = (iso: string) => Math.round((Date.parse(iso.slice(0, 10)) - Date.parse(todayWib())) / 86400000);
+const SRC: Record<string, string> = { self: 'Self', tech_lead: 'Tech Lead', project_manager: 'PM', client: 'Client', metrics: 'Metrik' };
+
+interface Attention { key: string; member: TeamMember; text: string; to: string; action: string; tone: 'red' | 'amber'; rank: number }
+
+/** Hal yang perlu perhatian, dari data Tim Saya: penilaian yang belum saya kirim, keterlambatan training/rencana, dan skor yang turun. Tanpa PIP maupun skor yang belum dipublikasikan. */
+function attentionOf(members: TeamMember[]): Attention[] {
+  const out: Attention[] = [];
+  for (const m of members) {
+    const d = m.development;
+    const mine = m.evaluation?.my_assessment;
+    if (mine?.status === 'draft') out.push({ key: `a${m.id}`, member: m, text: 'Penilaian Anda belum dikirim', to: `/assessments/${mine.id}`, action: 'Isi penilaian', tone: 'amber', rank: 0 });
+    if (d.trainings_overdue > 0) out.push({ key: `t${m.id}`, member: m, text: `${d.trainings_overdue} training lewat tenggat`, to: `/employees/${m.id}`, action: 'Buka profil', tone: 'red', rank: 1 });
+    if (d.plan_overdue > 0) out.push({ key: `p${m.id}`, member: m, text: `${d.plan_overdue} aktivitas rencana lewat tenggat`, to: `/employees/${m.id}`, action: 'Buka profil', tone: 'red', rank: 1 });
+    if (d.latest && d.previous_score != null && d.latest.final_score - d.previous_score <= -3) {
+      out.push({ key: `s${m.id}`, member: m, text: `Skor turun ${fmt(Math.abs(d.latest.final_score - d.previous_score))} dibanding periode sebelumnya`, to: `/employees/${m.id}`, action: 'Lihat profil', tone: 'amber', rank: 2 });
+    }
+  }
+  return out.sort((a, b) => a.rank - b.rank);
+}
+
+function TechLeadDashboard() {
+  const { user } = useAuth();
+  const { data, error, loading } = useLoad(() => api.get<TeamOverview>('/team/overview'));
+  const s = data?.summary;
+  const period = data?.period;
+  const attention = data ? attentionOf(data.members) : [];
+  const days = period && period.status === 'active' ? dayDiff(period.deadline) : null;
+  const inPeriod = data ? data.members.filter((m) => m.evaluation) : [];
+  const overdueAll = data ? data.team.overdue_trainings + data.team.overdue_plan_activities : 0;
+  return (
+    <Page title="Ringkasan Dashboard" eyebrow={`Selamat bekerja, ${user.name.split(' ')[0]}`}
+      actions={<Button asChild variant="outline"><Link to="/team">Buka Tim Saya</Link></Button>}>
+      <TaskQueue />
+      <Loading loading={loading && !data} error={error}>
+        {data && s && (data.members.length === 0 ? (
+          <Card><p className="py-6 text-center text-sm text-muted-foreground">Belum ada karyawan yang menjadikan Anda Tech Lead. Hubungi HR untuk menetapkan anggota tim.</p></Card>
+        ) : (
+          <>
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+              <StatCard icon={Clock} tone={s.my_pending > 0 ? 'amber' : 'green'} value={s.my_pending} label="Penilaian saya belum dikirim" sub={s.my_pending > 0 ? 'perlu Anda isi' : 'semua sudah terkirim'}
+                className={s.my_pending > 0 ? 'border-amber-300 bg-amber-50/60 ring-1 ring-amber-200 dark:border-amber-500/40 dark:bg-amber-500/10 dark:ring-amber-500/20' : ''} />
+              <StatCard icon={ClipboardList} tone="violet" value={`${s.complete}/${s.in_period}`} label="Semua penilai selesai" sub={period ? period.name : 'belum ada periode'} />
+              <StatCard icon={Target} tone={days != null && days <= 3 ? 'amber' : 'blue'}
+                value={days == null ? '—' : `${Math.abs(days)} hr`} label={days != null && days < 0 ? 'Lewat tenggat' : 'Sisa waktu ke tenggat'}
+                sub={period ? `tenggat ${fmtDate(period.deadline)}` : 'tidak ada periode berjalan'} />
+              <StatCard icon={Award} tone="green" value={data.team.avg_score != null ? fmt(data.team.avg_score) : '—'} label="Rata-rata skor tim" sub={`${data.team.with_result} anggota punya hasil dipublikasikan`} />
+              <StatCard icon={AlertTriangle} tone={overdueAll > 0 ? 'amber' : 'green'} value={overdueAll} label="Terlambat (training & rencana)" sub={overdueAll > 0 ? 'lihat daftar perhatian' : 'tidak ada yang tertinggal'} />
+            </div>
+
+            <div className="grid gap-4 lg:grid-cols-2">
+              <Card title="Perlu perhatian" actions={attention.length > 0 && <Badge tone="amber">{attention.length}</Badge>}>
+                {attention.length === 0 ? (
+                  <p className="flex items-center gap-2 py-4 text-sm text-emerald-700 dark:text-emerald-300"><CheckCircle2 className="size-4" />Tidak ada anggota tim yang perlu perhatian khusus.</p>
+                ) : (
+                  <ul className="divide-y">
+                    {attention.slice(0, 8).map((a) => (
+                      <li key={a.key} className="flex items-center gap-3 py-2.5">
+                        <PersonAvatar name={a.member.name} className="size-8" />
+                        <div className="min-w-0 flex-1 leading-tight">
+                          <div className="truncate text-sm font-semibold">{a.member.name}</div>
+                          <div className={`text-xs ${a.tone === 'red' ? 'text-red-600 dark:text-red-400' : 'text-amber-700 dark:text-amber-300'}`}>{a.text}</div>
+                        </div>
+                        <Button asChild size="sm" variant="outline"><Link to={a.to}>{a.action}</Link></Button>
+                      </li>
+                    ))}
+                    {attention.length > 8 && <li className="py-2 text-center text-xs text-muted-foreground">dan {attention.length - 8} lainnya di <Link className="underline" to="/team">Tim Saya</Link></li>}
+                  </ul>
+                )}
+              </Card>
+
+              <Card title={period ? `Progres penilaian — ${period.name}` : 'Progres penilaian'} actions={<Link className="text-xs text-primary hover:underline" to="/team">Selengkapnya</Link>}>
+                {inPeriod.length === 0 ? <p className="py-4 text-sm text-muted-foreground">Belum ada anggota tim pada periode berjalan.</p> : (
+                  <ul className="space-y-3">
+                    {inPeriod.map((m) => {
+                      const ev = m.evaluation!;
+                      const pct = ev.assessments_total ? (ev.assessments_done / ev.assessments_total) * 100 : 0;
+                      return (
+                        <li key={m.id}>
+                          <div className="flex items-center justify-between gap-2 text-sm">
+                            <Link to={`/employees/${m.id}`} className="truncate font-semibold hover:underline">{m.name}</Link>
+                            <span className="shrink-0 text-xs text-muted-foreground">{ev.assessments_done}/{ev.assessments_total}</span>
+                          </div>
+                          <Bar value={pct} />
+                          <div className="mt-1 flex flex-wrap gap-1">
+                            {ev.assessments.map((a, i) => (
+                              <span key={i} className={`inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10.5px] ${a.status === 'submitted' ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300' : 'bg-muted/40 text-muted-foreground'}`}>
+                                {a.status === 'submitted' ? <CheckCircle2 className="size-3" /> : <Clock className="size-3" />}{SRC[a.source] ?? a.source}
+                              </span>
+                            ))}
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </Card>
+            </div>
+          </>
+        ))}
+      </Loading>
+      <Card title="Pintasan">
+        <div className="flex flex-wrap gap-2">
+          <Button asChild><Link to="/my-evaluations">Buka My Evaluations</Link></Button>
+          <Button asChild variant="outline"><Link to="/team">Tim Saya</Link></Button>
+          <Button asChild variant="outline"><Link to="/dev-plans">Rencana Pengembangan</Link></Button>
+          {user.employee_id && (
+            <>
+              <Button asChild variant="outline"><Link to="/results">Hasil Saya</Link></Button>
+              <Button asChild variant="outline"><Link to={`/employees/${user.employee_id}`}>Profil &amp; Karier Saya</Link></Button>
+            </>
+          )}
+        </div>
+        <p className="mt-3 text-xs text-muted-foreground">Skor akhir tim tampil setelah hasil dipublikasikan; skor per sumber penilai tidak ditampilkan agar penilaian tetap independen. Tekan Ctrl+K untuk berpindah halaman dengan cepat.</p>
+      </Card>
     </Page>
   );
 }
