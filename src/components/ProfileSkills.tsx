@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { Award, FileText, GraduationCap, Paperclip, Pencil, Plus, Sparkles, Trash2, Upload } from 'lucide-react';
+import { Award, FileText, GraduationCap, Paperclip, Pencil, Plus, Search, Sparkles, Trash2, Upload } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useConfirm } from '@/components/ConfirmProvider';
 import { Button } from '@/components/ui/button';
@@ -8,7 +8,10 @@ import { DatePicker } from '@/components/ui/date-picker';
 import { FormSelect } from '@/components/ui/form-select';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { api } from '../api.ts';
+import { api, qs } from '../api.ts';
+import type { Paged } from '../types.ts';
+import { useDebounced } from '../lib/useDebounced.ts';
+import { PaginationBar } from './Pagination.tsx';
 import { useSkillSuggestions } from '../lib/useSkillSuggestions.ts';
 import { hasSeparator } from './TagInput.tsx';
 import { SkillCombobox } from './SkillCombobox.tsx';
@@ -208,13 +211,25 @@ function CertForm({ employeeId, initial, onClose, onSaved }: { employeeId: numbe
   );
 }
 
-/** Riwayat sertifikasi dan training yang diikuti, lengkap dengan tanggal dan keterangan. */
+const PAGE_SIZE = 10;
+interface CertCounts { all: number; sertifikasi: number; training: number }
+
+/** Riwayat sertifikasi dan training yang diikuti, lengkap dengan tanggal dan keterangan; per 10 data, dapat difilter menurut jenis dan nama. */
 export function CertificationsCard({ employeeId, canEdit }: CardProps) {
   const confirm = useConfirm();
-  const list = useLoad<any[]>(() => api.get(`/employees/${employeeId}/certifications`), [employeeId]);
+  const [page, setPage] = useState(1);
+  const [kind, setKind] = useState('');
+  const [q, setQ] = useState('');
+  const dq = useDebounced(q.trim());
+  const list = useLoad<Paged<any, CertCounts>>(() => api.get(`/employees/${employeeId}/certifications` + qs({ page, size: PAGE_SIZE, kind, q: dq })), [employeeId, page, kind, dq]);
   const [form, setForm] = useState<typeof EMPTY | null>(null);
   const { run } = useAction();
-  const rows = list.data ?? [];
+  const rows = list.data?.rows ?? [];
+  const counts = list.data?.summary;
+  const filtered = !!kind || !!dq;
+  // halaman terakhir menjadi kosong setelah penghapusan: mundur satu halaman
+  useEffect(() => { if (list.data && list.data.rows.length === 0 && page > 1) setPage(page - 1); }, [list.data, page]);
+  const pickKind = (v: string) => { setKind(v); setPage(1); };
 
   const openFile = (c) => run(async () => { try { await api.openFile(`/certifications/${c.id}/file`); } catch (e) { toast.error(e.message); } });
   const remove = async (c) => {
@@ -227,9 +242,23 @@ export function CertificationsCard({ employeeId, canEdit }: CardProps) {
       title="Sertifikasi & training" className="rounded-2xl"
       actions={canEdit && <Button size="sm" onClick={() => setForm({ ...EMPTY })}><Plus className="size-4" />Tambah</Button>}
     >
+      {counts && counts.all > 0 && (
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <div role="group" aria-label="Jenis" className="inline-flex rounded-lg border bg-card p-0.5">
+            {([['', 'Semua', counts.all], ['sertifikasi', 'Sertifikasi', counts.sertifikasi], ['training', 'Training', counts.training]] as [string, string, number][]).map(([v, label, n]) => (
+              <button key={v} type="button" aria-pressed={kind === v} onClick={() => pickKind(v)}
+                className={cn('rounded-md px-2.5 py-1 text-xs font-semibold transition-colors', kind === v ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:bg-muted')}>{label} <span className="opacity-70">{n}</span></button>
+            ))}
+          </div>
+          <div className="relative min-w-48 flex-1 sm:max-w-xs">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input className="pl-8" value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }} placeholder="Cari nama sertifikasi / training" aria-label="Cari nama" maxLength={100} />
+          </div>
+        </div>
+      )}
       <Loading loading={list.loading && !list.data} error={list.error}>
         {rows.length === 0 ? (
-          <p className="flex items-center gap-2 text-sm text-muted-foreground"><Award className="size-4" />{canEdit ? 'Belum ada data. Catat sertifikasi atau training yang pernah Anda ikuti.' : 'Belum ada sertifikasi atau training yang dicatat.'}</p>
+          <p className="flex items-center gap-2 text-sm text-muted-foreground"><Award className="size-4" />{filtered ? 'Tidak ada data yang cocok dengan filter.' : canEdit ? 'Belum ada data. Catat sertifikasi atau training yang pernah Anda ikuti.' : 'Belum ada sertifikasi atau training yang dicatat.'}</p>
         ) : (
           <ul className="space-y-3">
             {rows.map((c) => {
@@ -260,6 +289,7 @@ export function CertificationsCard({ employeeId, canEdit }: CardProps) {
           </ul>
         )}
       </Loading>
+      {list.data && list.data.total > 0 && <PaginationBar page={list.data.page} size={list.data.size} total={list.data.total} onPage={setPage} unit="data" />}
       {form && <CertForm employeeId={employeeId} initial={form} onClose={() => setForm(null)} onSaved={() => { setForm(null); list.reload(); }} />}
     </Card>
   );
